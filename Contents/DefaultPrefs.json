@@ -1,0 +1,16 @@
+[
+        {
+                "id": "langPref1",
+                "label": "Subtitle Language (1)",
+                "type": "enum",
+                "values": ["en","sv"],
+                "default": "eng"
+        },
+        {
+                "id": "langPref2",
+                "label": "Subtitle Language (2)",
+                "type": "enum",
+                "values": ["None", "en","sv"],
+                "default": "None"
+        }        
+]
