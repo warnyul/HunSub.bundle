@@ -25,16 +25,22 @@ def getLangList():
 
     return langList
 
-
-#Do a basic search for the filename and return all sub urls found
-def simpleSearch(params, lang = 'eng'):
+def tvSearch(params, lang):
     Log("Params: %s" % urllib.urlencode(params))
     searchUrl = TV_SEARCH + urllib.urlencode(params)
+    return simpleSearch(searchUrl, lang)
+
+def movieSearch(params, lang):
+    Log("Params: %s" % urllib.urlencode(params))
+    searchUrl = MOVIE_SEARCH + urllib.urlencode(params)
+    return simpleSearch(searchUrl, lang)
+
+
+#Do a basic search for the filename and return all sub urls found
+def simpleSearch(searchUrl, lang = 'eng'):
     Log("searchUrl: %s" % searchUrl)
     elem = HTML.ElementFromURL(searchUrl)
-    
     subUrls = []
-
     subpages = elem.xpath("//table[@class='seznam']//tbody//tr//td[1]//a/@href")
     for subpage in subpages:
         subPageUrl = PODNAPISI_MAIN_PAGE + subpage
@@ -49,13 +55,34 @@ def simpleSearch(params, lang = 'eng'):
 
 
 class SubInfo():
-    lang = None
-    url = None
-    sub = None
-    subExt = None
+    def __init__(self, lang, url, sub, name):
+        self.lang = lang
+        self.url = url
+        self.sub = sub
+        self.name = name
+        self.ext = string.split(self.name, '.')[-1]
 
-def getSubsForPart(part):
-    Log("Filename: %s" % fileName)
+def getSubsForPart(data, isTvShow=True):
+    siList = []
+    for lang in getLangList():
+        Log("Lang: %s,%s" % (lang, langPrefs2Podnapisi[lang]))
+        data['sJ'] = langPrefs2Podnapisi[lang]
+        if(isTvShow):
+            subUrls = tvSearch(data, lang)
+        else:
+            subUrls = movieSearch(data, lang)
+
+        for subUrl in subUrls:
+            Log("Getting subtitle from: %s" % subUrl)
+            zipArchive = Archive.ZipFromURL(subUrl)
+            for name in zipArchive:
+                Log("Name in zip: %s" % name)
+                subData = zipArchive[name]
+                si = SubInfo(lang, subUrl, subData, name)
+                siList.append(si)
+
+    return siList
+        
 
 def getReleaseGroup(filename):
     tmpFile = string.replace(filename, '-', '.')
@@ -77,7 +104,15 @@ class PodnapisiSubtitlesAgentMovies(Agent.Movies):
             Log("MOVIE UPDATE CALLED")
             for item in media.items:
                 for part in item.parts:
-                    pass
+                    Log("Title: %s" % media.title)
+                    Log("Filename: %s" % part.file)
+                    Log("Release group %s" % getReleaseGroup(part.file))
+                    data = {}
+                    data['sK'] = media.title
+                    data['sR'] = getReleaseGroup(part.file)
+                    for si in getSubsForPart(data):
+                        part.subtitles[Locale.Language.Match(si.lang)][si.url] = Proxy.Media(si.sub, ext=si.ext) 
+
 
 class PodnapisiSubtitlesAgentMovies(Agent.TV_Shows):
     name = 'Podnapisi TV Subtitles'
@@ -97,22 +132,13 @@ class PodnapisiSubtitlesAgentMovies(Agent.TV_Shows):
                     Log("show: %s" % media.title)
                     Log("Season: %s, Ep: %s" % (season, episode))
                     for part in item.parts:
-                        for lang in getLangList():
-                            Log("Release group: %s" % getReleaseGroup(part.file))
-                            Log("Lang: %s,%s" % (lang, langPrefs2Podnapisi[lang]))
-                            data = {}
-                            data['sK'] = media.title
-                            data['sTS'] = season
-                            data['sTE'] = episode
-                            data['sR'] = getReleaseGroup(part.file)
-                            data['sJ'] = langPrefs2Podnapisi[lang]
-                            subUrls = simpleSearch(data)
-                            for subUrl in subUrls:
-                                Log("Getting subtitle from: %s" % subUrl)
-                                zipArchive = Archive.ZipFromURL(subUrl)
-                                for name in zipArchive:
-                                    Log("Name in zip: %s" % name)
-                                    subData = zipArchive[name]
-                                    part.subtitles[Locale.Language.Match(lang)][subUrl] = Proxy.Media(subData, ext='srt') 
+                        Log("Release group: %s" % getReleaseGroup(part.file))
+                        data = {}
+                        data['sK'] = media.title
+                        data['sTS'] = season
+                        data['sTE'] = episode
+                        data['sR'] = getReleaseGroup(part.file)
+                        for si in getSubsForPart(data):
+                            part.subtitles[Locale.Language.Match(si.lang)][si.url] = Proxy.Media(si.sub, ext=si.ext) 
 
 
