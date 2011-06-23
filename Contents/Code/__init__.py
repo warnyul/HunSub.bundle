@@ -110,6 +110,8 @@ class PodnapisiSubtitlesAgentMovies(Agent.Movies):
                     data = {}
                     data['sK'] = media.title
                     data['sR'] = getReleaseGroup(part.file)
+                    siList = getSubsForPart(data)
+                    Log("%d subs found" % len(siList))
                     for si in getSubsForPart(data):
                         part.subtitles[Locale.Language.Match(si.lang)][si.url] = Proxy.Media(si.sub, ext=si.ext) 
 
@@ -138,7 +140,9 @@ class PodnapisiSubtitlesAgentMovies(Agent.TV_Shows):
                         data['sTS'] = season
                         data['sTE'] = episode
                         data['sR'] = getReleaseGroup(part.file)
-                        for si in getSubsForPart(data):
+                        siList = getSubsForPart(data)
+                        Log("%d subs found" % len(siList))
+                        for si in siList: 
                             part.subtitles[Locale.Language.Match(si.lang)][si.url] = Proxy.Media(si.sub, ext=si.ext) 
 
 
