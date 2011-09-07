@@ -3,14 +3,14 @@
                 "id": "langPref1",
                 "label": "Subtitle Language (1)",
                 "type": "enum",
-                "values": ["en","sv"],
-                "default": "eng"
+                "values": ["sq","ar","be","bs","bg","ca","zh","cs","da","nl","en","et","fi","fr","de","el","he","hi","hu","is","id","it","ja","ko","lv","lt","mk","ms","no","pl","pt","ro","ru","sr","sk","sl","es","sv","th","tr","uk","vi"],
+                "default": "en"
         },
         {
                 "id": "langPref2",
                 "label": "Subtitle Language (2)",
                 "type": "enum",
-                "values": ["None", "en","sv"],
+                "values": ["None", "sq","ar","be","bs","bg","ca","zh","cs","da","nl","en","et","fi","fr","de","el","he","hi","hu","is","id","it","ja","ko","lv","lt","mk","ms","no","pl","pt","ro","ru","sr","sk","sl","es","sv","th","tr","uk","vi"],
                 "default": "None"
         }        
 ]
