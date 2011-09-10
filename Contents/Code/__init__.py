@@ -1,6 +1,6 @@
 #hdbits.org
 
-import string, os, urllib, zipfile
+import string, os, urllib, zipfile, re
 
 PODNAPISI_MAIN_PAGE = "http://www.podnapisi.net"
 PODNAPISI_SEARCH_PAGE = "http://www.podnapisi.net/en/ppodnapisi/search?tbsl=%d&"
@@ -46,13 +46,42 @@ def simpleSearch(searchUrl, lang = 'eng'):
         subPageUrl = PODNAPISI_MAIN_PAGE + subpage
         Log("Subpage: %s" % subPageUrl)
         pageElem = HTML.ElementFromURL(subPageUrl)
-        downloadUrl = pageElem.xpath("//div[@class='podnapis_tabele_download']//a[contains(@href,'download')]/@href")[0]
-        downloadUrl = PODNAPISI_MAIN_PAGE + downloadUrl
+        downloadUrl = getDownloadUrlFromPage(pageElem)
         Log("DownloadURL: %s" % downloadUrl)
         subUrls.append(downloadUrl)
 
     return subUrls
 
+def getDownloadUrlFromPage(pageElem):
+    dlPart = None
+    funcName = None
+    dlScriptTag = pageElem.xpath("//script[contains(text(),'download')]/text()")[0]
+    Log("dlScriptTag: %s" % dlScriptTag)
+    p = re.compile("'.*'")
+    m = p.search(dlScriptTag)
+    if (m != None):
+        dlPart = m.group()
+        dlPart = dlPart[1:len(dlPart) - 1]
+        Log("dlPart: %s" % dlPart)
+
+    p = re.compile("\s(\w*)")
+    m = p.search(dlScriptTag)
+    funcName = string.strip(m.group())
+    Log("funcName: :%s" % funcName)
+
+    argScriptXpath = "//script[contains(text(),'%s')]/text()" % funcName
+    Log("argScriptXpath: %s" % argScriptXpath)
+    argScriptTag = pageElem.xpath(argScriptXpath)[1]
+    Log("argScriptTag: %s" % argScriptTag)
+
+    p = re.compile("\('(\w+)")
+    m = p.search(argScriptTag)
+    arg = m.group(1)
+    Log("arg: %s" % arg)
+
+    dlPage = PODNAPISI_MAIN_PAGE + dlPart + arg
+    Log("dlPage: %s" % dlPage)
+    return dlPage
 
 class SubInfo():
     def __init__(self, lang, url, sub, name):
