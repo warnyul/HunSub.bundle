@@ -41,7 +41,8 @@ def simpleSearch(searchUrl, lang = 'eng'):
     Log("searchUrl: %s" % searchUrl)
     elem = HTML.ElementFromURL(searchUrl)
     subUrls = []
-    subpages = elem.xpath("//table[@class='seznam']//tbody//tr//td[1]//a/@href")
+    #subpages = elem.xpath("//table[@class='seznam']//tbody//tr//td[1]//a/@href")
+    subpages = elem.xpath("//tr//div[@class='list_div2']/a/@href")
     for subpage in subpages:
         subPageUrl = PODNAPISI_MAIN_PAGE + subpage
         Log("Subpage: %s" % subPageUrl)
