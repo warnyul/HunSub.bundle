@@ -54,10 +54,14 @@ def simpleSearch(searchUrl, lang = 'eng'):
     return subUrls
 
 def getDownloadUrlFromPage(pageElem):
+    dlPart = pageElem.xpath("//div[@class='footer']//a[@class='button big download']/@href")[0]
+    return PODNAPISI_MAIN_PAGE + dlPart
+
+def getDownloadUrlFromPage2(pageElem):
     dlPart = pageElem.xpath("//div[@class='podnapis_tabele_download']//a[contains(@href,'download')]/@href")[0]
     return PODNAPISI_MAIN_PAGE + dlPart
 
-def getDownloadUrlFromPageOld(pageElem):
+def getDownloadUrlFromPage1(pageElem):
     dlPart = None
     funcName = None
     dlScriptTag = pageElem.xpath("//script[contains(text(),'download')]/text()")[0]
