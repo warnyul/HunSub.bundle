@@ -17,6 +17,9 @@ def Start():
     HTTP.Headers['User-agent'] = OS_PLEX_USERAGENT
     Log("START CALLED")
 
+def ValidatePrefs():
+    return
+
 #Prepare a list of languages we want subs for
 def getLangList():
     langList = [Prefs["langPref1"]]
