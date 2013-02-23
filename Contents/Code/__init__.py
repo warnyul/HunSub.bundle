@@ -117,7 +117,7 @@ def getSubsForPart(data, isTvShow=True):
             Log("Getting subtitle from: %s" % subUrl)
             zipArchive = Archive.ZipFromURL(subUrl)
             for name in zipArchive:
-                Log("Name in zip: %s" % name)
+                Log("Name in zip: %s" % repr(name))
                 subData = zipArchive[name]
                 si = SubInfo(lang, subUrl, subData, name)
                 siList.append(si)
