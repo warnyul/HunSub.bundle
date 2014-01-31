@@ -123,7 +123,7 @@ def getSubsForPart(data, isTvShow=True):
                 siList.append(si)
 
     return siList
-        
+
 
 def getReleaseGroup(filename):
     tmpFile = string.replace(filename, '-', '.')
@@ -138,7 +138,7 @@ class PodnapisiSubtitlesAgentMovies(Agent.Movies):
     contributes_to = ['com.plexapp.agents.imdb']
 
     def search(self, results, media, lang):
-        Log("MOVIE SEARCH CALLED")    
+        Log("MOVIE SEARCH CALLED")
         results.Append(MetadataSearchResult(id = 'null', score = 100))
 
     def update(self, metadata, media, lang):
@@ -164,7 +164,7 @@ class PodnapisiSubtitlesAgentTvShows(Agent.TV_Shows):
     contributes_to = ['com.plexapp.agents.thetvdb']
 
     def search(self, results, media, lang):
-        Log("TV SEARCH CALLED")    
+        Log("TV SEARCH CALLED")
         results.Append(MetadataSearchResult(id = 'null', score = 100))
 
     def update(self, metadata, media, lang):
@@ -183,7 +183,7 @@ class PodnapisiSubtitlesAgentTvShows(Agent.TV_Shows):
                         data['sR'] = getReleaseGroup(part.file)
                         siList = getSubsForPart(data)
                         Log("%d subs found" % len(siList))
-                        for si in siList: 
+                        for si in siList:
                             part.subtitles[Locale.Language.Match(si.lang)][si.url] = Proxy.Media(si.sub, ext=si.ext) 
 
 
