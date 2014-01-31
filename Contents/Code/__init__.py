@@ -3,9 +3,9 @@
 import string, os, urllib, zipfile, re
 
 PODNAPISI_MAIN_PAGE = "http://www.podnapisi.net"
-PODNAPISI_SEARCH_PAGE = "http://www.podnapisi.net/en/ppodnapisi/search?tbsl=%d&"
-MOVIE_SEARCH = PODNAPISI_SEARCH_PAGE % 2
-TV_SEARCH = PODNAPISI_SEARCH_PAGE % 3
+PODNAPISI_SEARCH_PAGE = "http://www.podnapisi.net/en/ppodnapisi/search?sT=%d&"
+MOVIE_SEARCH = PODNAPISI_SEARCH_PAGE % 0
+TV_SEARCH = PODNAPISI_SEARCH_PAGE % 1
 
 OS_PLEX_USERAGENT = 'plexapp.com v9.0'
 subtitleExt       = ['utf','utf8','utf-8','sub','srt','smi','rt','ssa','aqt','jss','ass','idx']
@@ -44,7 +44,6 @@ def simpleSearch(searchUrl, lang = 'eng'):
     Log("searchUrl: %s" % searchUrl)
     elem = HTML.ElementFromURL(searchUrl)
     subUrls = []
-    #subpages = elem.xpath("//table[@class='seznam']//tbody//tr//td[1]//a/@href")
     subpages = elem.xpath("//tr//div[@class='list_div2']/a/@href")
     for subpage in subpages:
         subPageUrl = PODNAPISI_MAIN_PAGE + subpage
@@ -103,15 +102,32 @@ class SubInfo():
         self.name = name
         self.ext = string.split(self.name, '.')[-1]
 
+
+def doSearch(data, lang, isTvShow):
+    if(isTvShow):
+        return tvSearch(data, lang)
+
+    return movieSearch(data, lang)
+
+def searchSubs(data, lang, isTvShow):
+
+    subUrls = doSearch(data, lang, isTvShow)
+
+    if not subUrls:
+        Log("%d subs found - trying to remove release group" % len(subUrls))
+        d = dict(data) # make a copy so that we still include release group for other searches
+        del d['sR']
+        subUrls = doSearch(d, lang, isTvShow)
+
+    return subUrls
+
 def getSubsForPart(data, isTvShow=True):
     siList = []
     for lang in getLangList():
         Log("Lang: %s,%s" % (lang, langPrefs2Podnapisi[lang]))
         data['sJ'] = langPrefs2Podnapisi[lang]
-        if(isTvShow):
-            subUrls = tvSearch(data, lang)
-        else:
-            subUrls = movieSearch(data, lang)
+
+        subUrls = searchSubs(data, lang, isTvShow)
 
         for subUrl in subUrls:
             Log("Getting subtitle from: %s" % subUrl)
@@ -123,7 +139,6 @@ def getSubsForPart(data, isTvShow=True):
                 siList.append(si)
 
     return siList
-
 
 def getReleaseGroup(filename):
     tmpFile = string.replace(filename, '-', '.')
@@ -151,9 +166,10 @@ class PodnapisiSubtitlesAgentMovies(Agent.Movies):
                     data = {}
                     data['sK'] = media.title
                     data['sR'] = getReleaseGroup(part.file)
-                    siList = getSubsForPart(data)
-                    Log("%d subs found" % len(siList))
-                    for si in getSubsForPart(data):
+
+                    siList = getSubsForPart(data, False)
+
+                    for si in siList:
                         part.subtitles[Locale.Language.Match(si.lang)][si.url] = Proxy.Media(si.sub, ext=si.ext) 
 
 
@@ -181,8 +197,9 @@ class PodnapisiSubtitlesAgentTvShows(Agent.TV_Shows):
                         data['sTS'] = season
                         data['sTE'] = episode
                         data['sR'] = getReleaseGroup(part.file)
+
                         siList = getSubsForPart(data)
-                        Log("%d subs found" % len(siList))
+
                         for si in siList:
                             part.subtitles[Locale.Language.Match(si.lang)][si.url] = Proxy.Media(si.sub, ext=si.ext) 
 
