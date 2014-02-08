@@ -134,6 +134,10 @@ def getSubsForPart(data, isTvShow=True):
             zipArchive = Archive.ZipFromURL(subUrl)
             for name in zipArchive:
                 Log("Name in zip: %s" % repr(name))
+                if name[-1] == "/":
+                    Log("Ignoring folder")
+                    continue
+
                 subData = zipArchive[name]
                 si = SubInfo(lang, subUrl, subData, name)
                 siList.append(si)
