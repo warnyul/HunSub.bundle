@@ -171,7 +171,6 @@ class PodnapisiSubtitlesAgentMovies(Agent.Movies):
         for item in media.items:
             for part in item.parts:
                 Log("Title: %s" % media.title)
-                Log("Title: %s" % mc.title)
                 Log("Filename: %s" % part.file)
                 Log("Year: %s" % mc.year)
                 Log("Release group %s" % getReleaseGroup(part.file))
@@ -180,13 +179,6 @@ class PodnapisiSubtitlesAgentMovies(Agent.Movies):
                 data['sK'] = media.title
                 data['sR'] = getReleaseGroup(part.file)
                 data['sY'] = mc.year
-
-                Log("metadata: %s" % repr(metadata))
-                Log("media: %s" % repr(media))
-                Log("item: %s" % repr(item))
-                Log("part: %s" % repr(part))
-                Log("Media title%s" % str(metadata.title))
-                Log("metadata id: %s" % metadata.id)
 
                 siList = getSubsForPart(data, False)
 
