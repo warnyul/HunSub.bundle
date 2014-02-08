@@ -1,6 +1,6 @@
 #hdbits.org
 
-import string, os, urllib, zipfile, re
+import string, os, urllib, zipfile, re, copy
 
 PODNAPISI_MAIN_PAGE = "http://www.podnapisi.net"
 PODNAPISI_SEARCH_PAGE = "http://www.podnapisi.net/en/ppodnapisi/search?sT=%d&"
@@ -11,6 +11,8 @@ OS_PLEX_USERAGENT = 'plexapp.com v9.0'
 subtitleExt       = ['utf','utf8','utf-8','sub','srt','smi','rt','ssa','aqt','jss','ass','idx']
 
 langPrefs2Podnapisi = {'sq':'29','ar':'12','be':'50','bs':'10','bg':'33','ca':'53','zh':'17','cs':'7','da':'24','nl':'23','en':'2','et':'20','fi':'31','fr':'8','de':'5','el':'16','he':'22','hi':'42','hu':'15','is':'6','id':'54','it':'9','ja':'11','ko':'4','lv':'21','lt':'19','mk':'35','ms':'55','no':'3','pl':'26','pt':'32','ro':'13','ru':'27','sr':'36','sk':'37','sl':'1','es':'28','sv':'25','th':'44','tr':'30','uk':'46','vi':'51','hr':'38'}
+
+mediaCopies = {}
 
 def Start():
     HTTP.CacheTime = 0
@@ -158,23 +160,40 @@ class PodnapisiSubtitlesAgentMovies(Agent.Movies):
 
     def search(self, results, media, lang):
         Log("MOVIE SEARCH CALLED")
-        results.Append(MetadataSearchResult(id = 'null', score = 100))
+        mediaCopy = copy.copy(media.primary_metadata)
+        uuid = String.UUID()
+        mediaCopies[uuid] = mediaCopy
+        results.Append(MetadataSearchResult(id = uuid, score = 100))
 
     def update(self, metadata, media, lang):
-            Log("MOVIE UPDATE CALLED")
-            for item in media.items:
-                for part in item.parts:
-                    Log("Title: %s" % media.title)
-                    Log("Filename: %s" % part.file)
-                    Log("Release group %s" % getReleaseGroup(part.file))
-                    data = {}
-                    data['sK'] = media.title
-                    data['sR'] = getReleaseGroup(part.file)
+        Log("MOVIE UPDATE CALLED")
+        mc = mediaCopies[metadata.id]
+        for item in media.items:
+            for part in item.parts:
+                Log("Title: %s" % media.title)
+                Log("Title: %s" % mc.title)
+                Log("Filename: %s" % part.file)
+                Log("Year: %s" % mc.year)
+                Log("Release group %s" % getReleaseGroup(part.file))
 
-                    siList = getSubsForPart(data, False)
+                data = {}
+                data['sK'] = media.title
+                data['sR'] = getReleaseGroup(part.file)
+                data['sY'] = mc.year
 
-                    for si in siList:
-                        part.subtitles[Locale.Language.Match(si.lang)][si.url] = Proxy.Media(si.sub, ext=si.ext) 
+                Log("metadata: %s" % repr(metadata))
+                Log("media: %s" % repr(media))
+                Log("item: %s" % repr(item))
+                Log("part: %s" % repr(part))
+                Log("Media title%s" % str(metadata.title))
+                Log("metadata id: %s" % metadata.id)
+
+                siList = getSubsForPart(data, False)
+
+                for si in siList:
+                    part.subtitles[Locale.Language.Match(si.lang)][si.url] = Proxy.Media(si.sub, ext=si.ext) 
+
+        del(mediaCopies[metadata.id])
 
 
 class PodnapisiSubtitlesAgentTvShows(Agent.TV_Shows):
@@ -189,6 +208,7 @@ class PodnapisiSubtitlesAgentTvShows(Agent.TV_Shows):
 
     def update(self, metadata, media, lang):
         Log("TvUpdate. Lang %s" % lang)
+        mc = mediaCopies[metadata.id]
         for season in media.seasons:
             for episode in media.seasons[season].episodes:
                 for item in media.seasons[season].episodes[episode].items:
