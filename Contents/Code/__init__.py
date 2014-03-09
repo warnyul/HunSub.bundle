@@ -200,7 +200,6 @@ class PodnapisiSubtitlesAgentTvShows(Agent.TV_Shows):
 
     def update(self, metadata, media, lang):
         Log("TvUpdate. Lang %s" % lang)
-        mc = mediaCopies[metadata.id]
         for season in media.seasons:
             for episode in media.seasons[season].episodes:
                 for item in media.seasons[season].episodes[episode].items:
