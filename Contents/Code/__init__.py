@@ -61,41 +61,6 @@ def getDownloadUrlFromPage(pageElem):
     dlPart = pageElem.xpath("//div[@class='footer']//a[@class='button big download']/@href")[0]
     return PODNAPISI_MAIN_PAGE + dlPart
 
-def getDownloadUrlFromPage2(pageElem):
-    dlPart = pageElem.xpath("//div[@class='podnapis_tabele_download']//a[contains(@href,'download')]/@href")[0]
-    return PODNAPISI_MAIN_PAGE + dlPart
-
-def getDownloadUrlFromPage1(pageElem):
-    dlPart = None
-    funcName = None
-    dlScriptTag = pageElem.xpath("//script[contains(text(),'download')]/text()")[0]
-    Log("dlScriptTag: %s" % dlScriptTag)
-    p = re.compile("'.*'")
-    m = p.search(dlScriptTag)
-    if (m != None):
-        dlPart = m.group()
-        dlPart = dlPart[1:len(dlPart) - 1]
-        Log("dlPart: %s" % dlPart)
-
-    p = re.compile("\s(\w*)")
-    m = p.search(dlScriptTag)
-    funcName = string.strip(m.group())
-    Log("funcName: :%s" % funcName)
-
-    argScriptXpath = "//script[contains(text(),'%s')]/text()" % funcName
-    Log("argScriptXpath: %s" % argScriptXpath)
-    argScriptTag = pageElem.xpath(argScriptXpath)[1]
-    Log("argScriptTag: %s" % argScriptTag)
-
-    p = re.compile("\('(\w+)")
-    m = p.search(argScriptTag)
-    arg = m.group(1)
-    Log("arg: %s" % arg)
-
-    dlPage = PODNAPISI_MAIN_PAGE + dlPart + arg
-    Log("dlPage: %s" % dlPage)
-    return dlPage
-
 class SubInfo():
     def __init__(self, lang, url, sub, name):
         self.lang = lang
