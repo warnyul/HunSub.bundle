@@ -51,15 +51,23 @@ def simpleSearch(searchUrl, lang = 'eng'):
         subPageUrl = PODNAPISI_MAIN_PAGE + subpage
         Log("Subpage: %s" % subPageUrl)
         pageElem = HTML.ElementFromURL(subPageUrl)
-        downloadUrl = getDownloadUrlFromPage(pageElem)
+        preDownloadUrl = getPreDownloadUrlFromPage(pageElem)
+        Log("PreDownloadURL: %s" % preDownloadUrl)
+        downloadUrl = getDownloadUrl(preDownloadUrl)
         Log("DownloadURL: %s" % downloadUrl)
         subUrls.append(downloadUrl)
 
     return subUrls
 
-def getDownloadUrlFromPage(pageElem):
+def getPreDownloadUrlFromPage(pageElem):
     dlPart = pageElem.xpath("//div[@class='footer']//a[@class='button big download']/@href")[0]
     return PODNAPISI_MAIN_PAGE + dlPart
+
+def getDownloadUrl(url):
+    page = HTML.ElementFromURL(url)
+    dlUrl = page.xpath("//div[@id='content_left']//div[@class='frame']//div[@class='content']//a/@href")[0]
+    dlUrl = PODNAPISI_MAIN_PAGE + dlUrl
+    return dlUrl
 
 class SubInfo():
     def __init__(self, lang, url, sub, name):
