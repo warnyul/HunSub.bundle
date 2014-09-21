@@ -6,6 +6,7 @@ PODNAPISI_MAIN_PAGE = "http://www.podnapisi.net"
 PODNAPISI_SEARCH_PAGE = "http://www.podnapisi.net/en/ppodnapisi/search?sT=%d&"
 MOVIE_SEARCH = PODNAPISI_SEARCH_PAGE % 0
 TV_SEARCH = PODNAPISI_SEARCH_PAGE % 1
+IGNORE_FILE = ".ignoresubtitlesearch"
 
 OS_PLEX_USERAGENT = 'plexapp.com v9.0'
 subtitleExt       = ['utf','utf8','utf-8','sub','srt','smi','rt','ssa','aqt','jss','ass','idx']
@@ -125,6 +126,14 @@ def getReleaseGroup(filename):
     group = splitName[-2]
     return group
 
+def ignoreSearch(filename):
+    path = os.path.dirname(filename)
+    ignorepath = os.path.join(path, IGNORE_FILE)
+
+    if os.path.exists(ignorepath):
+        return True
+    return False
+
 class PodnapisiSubtitlesAgentMovies(Agent.Movies):
     name = 'Podnapisi Movie Subtitles'
     languages = [Locale.Language.English]
@@ -144,7 +153,7 @@ class PodnapisiSubtitlesAgentMovies(Agent.Movies):
         for item in media.items:
             for part in item.parts:
                 Log("Title: %s" % media.title)
-                Log("Filename: %s" % part.file)
+                Log("Filename: %s" % os.path.basename(part.file))
                 Log("Year: %s" % mc.year)
                 Log("Release group %s" % getReleaseGroup(part.file))
 
@@ -153,10 +162,14 @@ class PodnapisiSubtitlesAgentMovies(Agent.Movies):
                 data['sR'] = getReleaseGroup(part.file)
                 data['sY'] = mc.year
 
-                siList = getSubsForPart(data, False)
+                if not ignoreSearch(part.file):
+                    siList = getSubsForPart(data, False)
 
-                for si in siList:
-                    part.subtitles[Locale.Language.Match(si.lang)][si.url] = Proxy.Media(si.sub, ext=si.ext) 
+                    for si in siList:
+                        part.subtitles[Locale.Language.Match(si.lang)][si.url] = Proxy.Media(si.sub, ext=si.ext) 
+                else:
+                    Log("Ignoring search for file %s" % os.path.basename(part.file))
+                    Log("Due to a %s file being present in the same directory" % IGNORE_FILE)
 
         del(mediaCopies[metadata.id])
 
@@ -180,15 +193,19 @@ class PodnapisiSubtitlesAgentTvShows(Agent.TV_Shows):
                     Log("Season: %s, Ep: %s" % (season, episode))
                     for part in item.parts:
                         Log("Release group: %s" % getReleaseGroup(part.file))
+                        Log("Filename: %s" % os.path.basename(part.file))
                         data = {}
                         data['sK'] = media.title
                         data['sTS'] = season
                         data['sTE'] = episode
                         data['sR'] = getReleaseGroup(part.file)
 
-                        siList = getSubsForPart(data)
-
-                        for si in siList:
-                            part.subtitles[Locale.Language.Match(si.lang)][si.url] = Proxy.Media(si.sub, ext=si.ext) 
+                        if not ignoreSearch(part.file):
+                            siList = getSubsForPart(data)
+                            for si in siList:
+                                part.subtitles[Locale.Language.Match(si.lang)][si.url] = Proxy.Media(si.sub, ext=si.ext) 
+                        else:
+                            Log("Ignoring search for file %s" % os.path.basename(part.file))
+                            Log("Due to a %s file being present in the same directory" % IGNORE_FILE)
 
 
