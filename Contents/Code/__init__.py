@@ -52,23 +52,29 @@ def simpleSearch(searchUrl, lang = 'eng'):
         subPageUrl = PODNAPISI_MAIN_PAGE + subpage
         Log("Subpage: %s" % subPageUrl)
         pageElem = HTML.ElementFromURL(subPageUrl)
-        preDownloadUrl = getPreDownloadUrlFromPage(pageElem)
-        Log("PreDownloadURL: %s" % preDownloadUrl)
-        downloadUrl = getDownloadUrl(preDownloadUrl)
-        Log("DownloadURL: %s" % downloadUrl)
-        subUrls.append(downloadUrl)
+        preDownloadUrls = getPreDownloadUrlsFromPage(pageElem)
+        Log("PreDownloadURL: %s" % preDownloadUrls)
+        downloadUrls = getDownloadUrls(preDownloadUrls)
+        Log("DownloadURL: %s" % downloadUrls)
+        subUrls.extend(downloadUrls)
 
     return subUrls
 
-def getPreDownloadUrlFromPage(pageElem):
-    dlPart = pageElem.xpath("//div[@class='footer']//a[@class='button big download']/@href")[0]
-    return PODNAPISI_MAIN_PAGE + dlPart
+def getPreDownloadUrlsFromPage(pageElem):
+    # Should only return one, but lets do it without exceptions
+    dlParts = pageElem.xpath("//div[@class='footer']//a[@class='button big download']/@href")
+    pages = map(lambda p: PODNAPISI_MAIN_PAGE + p, dlParts)
+    return pages
 
-def getDownloadUrl(url):
-    page = HTML.ElementFromURL(url)
-    dlUrl = page.xpath("//div[@id='content_left']//div[@class='frame']//div[@class='content']//a/@href")[0]
-    dlUrl = PODNAPISI_MAIN_PAGE + dlUrl
-    return dlUrl
+def getDownloadUrls(urls):
+    dlUrls = []
+    for url in urls:
+        page = HTML.ElementFromURL(url)
+        # Should only return one.. but lets make it a list
+        urls = page.xpath("//div[@id='content_left']//div[@class='frame']//div[@class='content']//a/@href")
+        urls = map(lambda u: PODNAPISI_MAIN_PAGE + u, urls)
+        dlUrls.extend(urls)
+    return dlUrls
 
 class SubInfo():
     def __init__(self, lang, url, sub, name):
@@ -166,7 +172,7 @@ class PodnapisiSubtitlesAgentMovies(Agent.Movies):
                     siList = getSubsForPart(data, False)
 
                     for si in siList:
-                        part.subtitles[Locale.Language.Match(si.lang)][si.url] = Proxy.Media(si.sub, ext=si.ext) 
+                        part.subtitles[Locale.Language.Match(si.lang)][si.url] = Proxy.Media(si.sub, ext=si.ext)
                 else:
                     Log("Ignoring search for file %s" % os.path.basename(part.file))
                     Log("Due to a %s file being present in the same directory" % IGNORE_FILE)
@@ -203,7 +209,7 @@ class PodnapisiSubtitlesAgentTvShows(Agent.TV_Shows):
                         if not ignoreSearch(part.file):
                             siList = getSubsForPart(data)
                             for si in siList:
-                                part.subtitles[Locale.Language.Match(si.lang)][si.url] = Proxy.Media(si.sub, ext=si.ext) 
+                                part.subtitles[Locale.Language.Match(si.lang)][si.url] = Proxy.Media(si.sub, ext=si.ext)
                         else:
                             Log("Ignoring search for file %s" % os.path.basename(part.file))
                             Log("Due to a %s file being present in the same directory" % IGNORE_FILE)
