@@ -46,35 +46,16 @@ def movieSearch(params, lang):
 def simpleSearch(searchUrl, lang = 'eng'):
     Log("searchUrl: %s" % searchUrl)
     elem = HTML.ElementFromURL(searchUrl)
-    subUrls = []
-    subpages = elem.xpath("//tr//div[@class='list_div2']/a/@href")
-    for subpage in subpages:
-        subPageUrl = PODNAPISI_MAIN_PAGE + subpage
-        Log("Subpage: %s" % subPageUrl)
-        pageElem = HTML.ElementFromURL(subPageUrl)
-        preDownloadUrls = getPreDownloadUrlsFromPage(pageElem)
-        Log("PreDownloadURL: %s" % preDownloadUrls)
-        downloadUrls = getDownloadUrls(preDownloadUrls)
-        Log("DownloadURL: %s" % downloadUrls)
-        subUrls.extend(downloadUrls)
-
-    return subUrls
-
-def getPreDownloadUrlsFromPage(pageElem):
-    # Should only return one, but lets do it without exceptions
-    dlParts = pageElem.xpath("//div[@class='footer']//a[@class='button big download']/@href")
-    pages = map(lambda p: PODNAPISI_MAIN_PAGE + p, dlParts)
-    return pages
-
-def getDownloadUrls(urls):
-    dlUrls = []
-    for url in urls:
-        page = HTML.ElementFromURL(url)
-        # Should only return one.. but lets make it a list
-        urls = page.xpath("//div[@id='content_left']//div[@class='frame']//div[@class='content']//a/@href")
-        urls = map(lambda u: PODNAPISI_MAIN_PAGE + u, urls)
-        dlUrls.extend(urls)
-    return dlUrls
+    subs = []
+    subtitles = elem.xpath("//subtitle")
+    for subtitle in subtitles:
+        url = subtitle.xpath('./url/text()')[0]
+        release = subtitle.xpath('./release/text()')
+        if len(release) > 0:
+            release = release[0]
+        t = (url, release)
+        subs.append(t)
+    return subs
 
 class SubInfo():
     def __init__(self, lang, url, sub, name):
@@ -84,7 +65,6 @@ class SubInfo():
         self.name = name
         self.ext = string.split(self.name, '.')[-1]
 
-
 def doSearch(data, lang, isTvShow):
     if(isTvShow):
         return tvSearch(data, lang)
@@ -92,14 +72,25 @@ def doSearch(data, lang, isTvShow):
     return movieSearch(data, lang)
 
 def searchSubs(data, lang, isTvShow):
+    d = dict(data) # make a copy so that we still include release group for other searches
+    releaseGroup = d['sR']
+    del d['sR']
+    subUrls = doSearch(d, lang, isTvShow)
 
-    subUrls = doSearch(data, lang, isTvShow)
+    Log("Release group %s" % releaseGroup)
 
-    if not subUrls:
-        Log("%d subs found - trying to remove release group" % len(subUrls))
-        d = dict(data) # make a copy so that we still include release group for other searches
-        del d['sR']
-        subUrls = doSearch(d, lang, isTvShow)
+    filteredSubs = [x for x in subUrls if releaseGroup in x[1]]
+    Log("Filtered subs")
+    Log(filteredSubs)
+
+    Log("Unfiltered subs")
+    Log(subUrls)
+
+    if len(filteredSubs) > 0:
+        Log("filtered subs found, returning them")
+        subUrls = filteredSubs
+
+    subUrls = [x[0] for x in subUrls]
 
     return subUrls
 
@@ -172,6 +163,7 @@ class PodnapisiSubtitlesAgentMovies(Agent.Movies):
                     siList = getSubsForPart(data, False)
 
                     for si in siList:
+                        Log(Locale.Language.Match(si.lang))
                         part.subtitles[Locale.Language.Match(si.lang)][si.url] = Proxy.Media(si.sub, ext=si.ext)
                 else:
                     Log("Ignoring search for file %s" % os.path.basename(part.file))
@@ -209,6 +201,7 @@ class PodnapisiSubtitlesAgentTvShows(Agent.TV_Shows):
                         if not ignoreSearch(part.file):
                             siList = getSubsForPart(data)
                             for si in siList:
+                                Log(Locale.Language.Match(si.lang))
                                 part.subtitles[Locale.Language.Match(si.lang)][si.url] = Proxy.Media(si.sub, ext=si.ext)
                         else:
                             Log("Ignoring search for file %s" % os.path.basename(part.file))
