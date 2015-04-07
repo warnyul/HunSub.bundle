@@ -46,7 +46,7 @@ def movieSearch(params, lang):
 def simpleSearch(searchUrl, lang = 'eng'):
     Log("searchUrl: %s" % searchUrl)
     elem = HTML.ElementFromURL(searchUrl)
-    subs = []
+    subPages = []
     subtitles = elem.xpath("//subtitle")
     for subtitle in subtitles:
         url = subtitle.xpath('./url/text()')[0]
@@ -54,8 +54,8 @@ def simpleSearch(searchUrl, lang = 'eng'):
         if len(release) > 0:
             release = release[0]
         t = (url, release)
-        subs.append(t)
-    return subs
+        subPages.append(t)
+    return subPages
 
 class SubInfo():
     def __init__(self, lang, url, sub, name):
@@ -71,26 +71,41 @@ def doSearch(data, lang, isTvShow):
 
     return movieSearch(data, lang)
 
+def getSubUrls(subPages):
+    urls = []
+    for page in subPages:
+        p = HTML.ElementFromURL(page)
+        dlUrl = p.xpath("//form[@class='form-inline']/@action")
+        if len(dlUrl) > 0:
+            u = dlUrl[0]
+            u = PODNAPISI_MAIN_PAGE + u
+            Log(u)
+            urls.append(u)
+
+    return urls
+
 def searchSubs(data, lang, isTvShow):
     d = dict(data) # make a copy so that we still include release group for other searches
     releaseGroup = d['sR']
     del d['sR']
-    subUrls = doSearch(d, lang, isTvShow)
+    subPages = doSearch(d, lang, isTvShow)
 
     Log("Release group %s" % releaseGroup)
 
-    filteredSubs = [x for x in subUrls if releaseGroup in x[1]]
+    filteredSubs = [x for x in subPages if releaseGroup in x[1]]
     Log("Filtered subs")
     Log(filteredSubs)
 
     Log("Unfiltered subs")
-    Log(subUrls)
+    Log(subPages)
 
     if len(filteredSubs) > 0:
         Log("filtered subs found, returning them")
-        subUrls = filteredSubs
+        subPages = filteredSubs
 
-    subUrls = [x[0] for x in subUrls]
+    subPages = [x[0] for x in subPages]
+
+    subUrls = getSubUrls(subPages)
 
     return subUrls
 
