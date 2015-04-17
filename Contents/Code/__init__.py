@@ -75,7 +75,7 @@ def getSubUrls(subPages):
     urls = []
     for page in subPages:
         p = HTML.ElementFromURL(page)
-        dlUrl = p.xpath("//form[@class='form-inline']/@action")
+        dlUrl = p.xpath("//form[@class='form-inline download-form']/@action")
         if len(dlUrl) > 0:
             u = dlUrl[0]
             u = PODNAPISI_MAIN_PAGE + u
