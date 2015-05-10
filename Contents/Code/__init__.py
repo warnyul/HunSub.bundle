@@ -20,7 +20,10 @@ def getLangList():
     langList = [Prefs["langPref1"]]
     if(Prefs["langPref2"] != "None"):
         langList.append(Prefs["langPref2"])
-
+    if(Prefs["langPref3"] != "None"):
+        langList.append(Prefs["langPref3"])
+    if(Prefs["langPref4"] != "None"):
+        langList.append(Prefs["langPref4"])
     return langList
 
 #Do a basic search for the filename and return all sub urls found
