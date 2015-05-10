@@ -144,8 +144,6 @@ class PodnapisiSubtitlesAgentMovies(Agent.Movies):
         for item in media.items:
             for part in item.parts:
                 Log("Title: %s" % media.title)
-                Log("Filename: %s" % os.path.basename(part.file))
-                Log("Release group %s" % getReleaseGroup(part.file))
 
                 handlePart(part)
 
