@@ -5,6 +5,8 @@ PODNAPISI_SEARCH_PAGE = "http://www.podnapisi.net/subtitles/search/advanced?"
 
 IGNORE_FILE = ".ignoresubtitlesearch"
 
+METADATA_URL = "http://127.0.0.1:32400/library/metadata/"
+
 OS_PLEX_USERAGENT = 'plexapp.com v9.0'
 
 def Start():
@@ -49,9 +51,6 @@ def searchSubs(params, lang):
 
     subPages = simpleSearch(searchUrl)
 
-    Log("Unfiltered subs")
-    Log(subPages)
-
     #Only get the five first subs for vague matches
     subPages = subPages[0:5]
 
@@ -76,7 +75,7 @@ def getFilesInZipFile(zipFile):
     for name in zipFile:
         Log("Name in zip: %s" % repr(name))
         if name[-1] == "/":
-            Log("Ignoring folder")
+            #Log("Ignoring folder")
             continue
 
         subData = zipFile[name]
@@ -112,25 +111,103 @@ def ignoreSearch(filename):
         return True
     return False
 
-def handlePart(part):
-    fileName = os.path.basename(part.file)
+def keywordSearch(filename):
+    data = {}
+    data["keywords"] = filename
+    Log("Keyword search for %s:" % filename)
+    siList = getSubsForPart(data)
+    return siList
 
-    if not ignoreSearch(part.file):
-        Log("Filename: %s" % fileName)
-        Log("Release group: %s" % getReleaseGroup(part.file))
+# Fallback method if keyword search doesn't return anything
+def mediaInfoSearch(mediaInfo):
+    data = {}
 
-        data = {}
-        data["keywords"] = fileName
+    Log("Detailed search for:")
+    mediaInfo.printme()
 
-        siList = getSubsForPart(data)
+    movie_type = "tv-series"
+
+    if mediaInfo.isMovie:
+        movie_type = "movie"
+    data["movie_type"] = movie_type
+
+    if mediaInfo.name:
+        data["keywords"] = mediaInfo.name
+
+    if mediaInfo.season:
+        data["seasons"] = mediaInfo.season
+
+    if mediaInfo.episode:
+        data["episodes"] = mediaInfo.episode
+
+    if mediaInfo.year:
+        data["year"] = mediaInfo.year
+
+    return getSubsForPart(data)
+
+def handleMediaInfo(mediaInfo, part):
+
+    if not ignoreSearch(mediaInfo.filename):
+
+        siList = keywordSearch(mediaInfo.filename)
+
+        if not siList:
+            Log("No results from keyword/filename search, try harder")
+            siList = mediaInfoSearch(mediaInfo)
 
         for si in siList:
             Log(Locale.Language.Match(si.lang))
             part.subtitles[Locale.Language.Match(si.lang)][si.url] = Proxy.Media(si.sub, ext=si.ext)
     else:
-        Log("Ignoring search for file %s" % fileName)
+        Log("Ignoring search for file %s" % mediaInfo.filename)
         Log("Due to a %s file being present in the same directory" % IGNORE_FILE)
 
+class MediaInfo():
+    def __init__(self, name, isMovie=True):
+        self.name = name
+        self.isMovie = isMovie
+        self.year = None
+        self.filename = None
+        self.releaseGroup = None
+        self.season = None
+        self.episode = None
+
+    def printme(self):
+        Log("Name: %s" % self.name)
+        Log("IsMovie: %s" % self.isMovie)
+        Log("Year: %s" % self.year)
+        Log("Filename: %s" % self.filename)
+        #Log("ReleaseGroup: %s" % self.releaseGroup)
+        Log("Season: %s " % self.season)
+        Log("Episode: %s " % self.episode)
+
+
+def getMetadataXML(mediaid):
+    url = METADATA_URL + mediaid
+    Log(url)
+    elem = XML.ElementFromURL(url)
+    return elem
+
+def getMovieInfo(media):
+    mi = MediaInfo(media.title)
+
+    elem = getMetadataXML(media.id)
+
+    year = elem.xpath("//Video/@year")
+    if (len(year) > 0):
+        mi.year = year[0]
+
+    return mi
+
+def getTvShowInfo(media):
+    i = MediaInfo(media.title, False)
+
+    elem = getMetadataXML(media.id)
+    year = elem.xpath("//Directory/@year")
+    if (len(year) > 0):
+        i.year = year[0]
+
+    return i
 
 class PodnapisiSubtitlesAgentMovies(Agent.Movies):
     name = 'Podnapisi Movie Subtitles'
@@ -139,16 +216,18 @@ class PodnapisiSubtitlesAgentMovies(Agent.Movies):
     contributes_to = ['com.plexapp.agents.imdb']
 
     def search(self, results, media, lang):
-        Log("Movie search called")
+        Log("Movie search")
         results.Append(MetadataSearchResult(id = 'null', score = 100))
 
     def update(self, metadata, media, lang):
-        Log("Movie update. Lang %s" % lang)
+        Log("Movie update")
+        movieInfo = getMovieInfo(media)
+        Log("Title: %s" % media.title)
         for item in media.items:
             for part in item.parts:
-                Log("Title: %s" % media.title)
+                movieInfo.filename = os.path.basename(part.file)
 
-                handlePart(part)
+                handleMediaInfo(movieInfo, part)
 
 class PodnapisiSubtitlesAgentTvShows(Agent.TV_Shows):
     name = 'Podnapisi TV Subtitles'
@@ -157,19 +236,22 @@ class PodnapisiSubtitlesAgentTvShows(Agent.TV_Shows):
     contributes_to = ['com.plexapp.agents.thetvdb']
 
     def search(self, results, media, lang):
-        Log("TV search called")
+        Log("TV search")
         results.Append(MetadataSearchResult(id = 'null', score = 100))
 
     def update(self, metadata, media, lang):
-        Log("TvUpdate. Lang %s" % lang)
+        Log("TvUpdate")
+        tvShowInfo = getTvShowInfo(media)
+        Log("Title: %s" % media.title)
         for season in media.seasons:
             for episode in media.seasons[season].episodes:
                 for item in media.seasons[season].episodes[episode].items:
-                    Log("Show: %s" % media.title)
-                    Log("Season: %s, Ep: %s" % (season, episode))
                     for part in item.parts:
+                        tvShowInfo.season = season
+                        tvShowInfo.episode = episode
+                        tvShowInfo.filename = os.path.basename(part.file)
+                        handleMediaInfo(tvShowInfo, part)
 
-                        handlePart(part)
 
 class SubInfo():
     def __init__(self, lang, url, sub, name):
