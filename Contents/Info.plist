@@ -7,15 +7,15 @@
         <key>CFBundleExecutable</key>
         <string>Test Plug-in</string>
         <key>CFBundleIdentifier</key>
-        <string>com.plexapp.agents.podnapisi</string>
+        <string>com.plexapp.agents.hunsub</string>
         <key>CFBundleInfoDictionaryVersion</key>
         <string>6.0</string>
         <key>CFBundleShortVersionString</key>
-        <string>1.0</string>
+        <string>0.1.0</string>
         <key>CFBundleSignature</key>
         <string>????</string>
         <key>CFBundleVersion</key>
-        <string>1.0</string>
+        <string>0.1.0</string>
         <key>PlexFrameworkVersion</key>
         <string>2</string>
         <key>PlexPluginClass</key>
