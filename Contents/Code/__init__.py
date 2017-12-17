@@ -1,73 +1,84 @@
 import string
 import os
 import urllib
+import re
 
-PODNAPISI_MAIN_PAGE = "http://www.podnapisi.net"
-PODNAPISI_SEARCH_PAGE = "http://www.podnapisi.net/subtitles/search/advanced?"
+SEARCH_PAGE = "http://hosszupuskasub.com/sorozatok.php?"
 
 IGNORE_FILE = ".ignoresubtitlesearch"
 
 METADATA_URL = "http://127.0.0.1:32400/library/metadata/"
 
-OS_PLEX_USERAGENT = 'plexapp.com v9.0'
+OS_PLEX_USER_AGENT = 'plexapp.com v9.0'
 
 
 def Start():
     HTTP.CacheTime = 0
-    HTTP.Headers['User-agent'] = OS_PLEX_USERAGENT
-    Log("Starting HunSub Plex Agent")
+    HTTP.Headers['User-Agent'] = OS_PLEX_USER_AGENT
+    Log('Starting HunSub Plex Agent')
 
 
 def ValidatePrefs():
+    Log('ValidatePrefs called')
     return
 
 
-# Prepare a list of languages we want subs for
-def get_lang_list():
-    lang_list = [Prefs["langPref1"]]
+def get_language_list():
+    language_list = [Prefs["langPref1"]]
     if Prefs["langPref2"] != "None":
-        lang_list.append(Prefs["langPref2"])
-    return lang_list
+        language_list.append(Prefs["langPref2"])
+    return language_list
+
+
+class SubMetaInfo:
+    def __init__(self, url, release_groups):
+        self.url = url
+        self.release_groups = release_groups
 
 
 # Do a basic search for the filename and return all sub urls found
 def simple_search(search_url):
     Log("searchUrl: %s" % search_url)
-    elem = HTML.ElementFromURL(search_url)
+    data = HTML.ElementFromURL(search_url)
     sub_pages = []
-    subtitles = elem.xpath("//tr[@class='subtitle-entry']")
+    subtitles = data.xpath(
+        '/html/body/div[@id="stranka"]/center/table[2]//tr/td[2]//table//tr[position()>1]')
+
+    Log("subtitles count %d", len(subtitles))
+
     for subtitle in subtitles:
-        url = PODNAPISI_MAIN_PAGE + subtitle.xpath("./@data-href")[0]
-        Log(url)
-        sub_pages.append(url)
+        release_group_line = subtitle.xpath('string(./td[2])')
+        match_object = re.search("\(([a-zA-Z0-9-, ]+)\)", release_group_line, re.M | re.I)
+
+        url = subtitle.xpath('./td[7]/a[2]/@href')
+
+        if not match_object or len(url) == 0:
+            continue
+
+        Log("Subtitle: %s" % url[0])
+        Log("Release Group: %s" % match_object.group(1))
+        sub_pages.append(SubMetaInfo(url[0], match_object.group(1).split(', ')))
+
     return sub_pages
 
 
 def search_subs(params, lang):
-
     # Sort the results in order of most downloaded first
-    params["language"] = lang
-    params["sort"] = "stats.downloads"
-    params["order"] = "desc"
+    params['nyelvtipus'] = '1' if (lang == 'hu') else '2' if (lang == "en") else '%'
 
-    search_url = PODNAPISI_SEARCH_PAGE + urllib.urlencode(params)
+    search_url = SEARCH_PAGE + urllib.urlencode(params)
 
     sub_pages = simple_search(search_url)
 
     # Only get the five first subs for vague matches
-    sub_pages = sub_pages[0:5]
-
-    return sub_pages
+    return sub_pages[0:5]
 
 
 def download_subs_as_zip(url):
-    params = {"container": "zip"}
-    params = urllib.urlencode(params)
+    Log("Download sub as zip: %s" % url)
 
     zip_files = []
 
-    url = url + "/download?" + params
-    Log(url)
     zip_file = Archive.ZipFromURL(url)
     zip_files.append(zip_file)
 
@@ -79,7 +90,7 @@ def get_files_in_zip_file(zip_file):
     for name in zip_file:
         Log("Name in zip: %s" % repr(name))
         if name[-1] == "/":
-            # Log("Ignoring folder")
+            # Ignore folder
             continue
 
         sub_data = zip_file[name]
@@ -88,26 +99,41 @@ def get_files_in_zip_file(zip_file):
     return files
 
 
-def get_subs_for_part(data):
-    si_list = []
-    for lang in get_lang_list():
-        sub_urls = search_subs(data, lang)
-        for subUrl in sub_urls:
-            zip_files = download_subs_as_zip(subUrl)
+def get_subs_for_part(media_info, data):
+    sub_info_list = []
+    for lang in get_language_list():
+        subs = search_subs(data, lang)
+        for sub in subs:
+            has_match = find_release_match(media_info, sub.releaseGroups)
+
+            Log("find subtitle for this release %s %s %s" % (has_match, media_info.filename, sub.releaseGroups))
+            if not has_match:
+                continue
+
+            zip_files = download_subs_as_zip(sub.url)
             for zipFile in zip_files:
                 files = get_files_in_zip_file(zipFile)
                 for f in files:
                     (name, subData) = f
-                    si = SubInfo(lang, subUrl, subData, name)
-                    si_list.append(si)
-    return si_list
+                    si = SubInfo(lang, sub.url, subData, name)
+                    sub_info_list.append(si)
+    return sub_info_list
 
 
-def get_release_group(filename):
-    tmp_file = string.replace(filename, '-', '.')
-    split_name = string.split(tmp_file, '.')
-    group = split_name[-2]
-    return group
+def find_release_match(media_info, release_groups):
+
+    for releaseGroup in release_groups:
+        count = 0
+        release_group_items = releaseGroup.replace('-', ' ').split(' ')
+        for item in release_group_items:
+            # Log("find %s release in %s" % (item, media_info.filename))
+            if item.lower() in media_info.filename.lower():
+                count = count + 1
+
+        if count == len(release_group_items):
+            return True
+
+    return False
 
 
 def ignore_search(filename):
@@ -119,13 +145,6 @@ def ignore_search(filename):
     return False
 
 
-def keyword_search(filename):
-    data = {"keywords": filename}
-    Log("Keyword search for %s:" % filename)
-    si_list = get_subs_for_part(data)
-    return si_list
-
-
 # Fallback method if keyword search doesn't return anything
 def media_info_search(media_info):
     data = {}
@@ -133,40 +152,27 @@ def media_info_search(media_info):
     Log("Detailed search for:")
     media_info.print_me()
 
-    movie_type = "tv-series"
-
-    if media_info.isMovie:
-        movie_type = "movie"
-    data["movie_type"] = movie_type
-
     if media_info.name:
-        data["keywords"] = media_info.name
+        data["cim"] = media_info.name
 
     if media_info.season:
-        data["seasons"] = media_info.season
+        data["evad"] = "s%s" % media_info.season.zfill(2)
 
     if media_info.episode:
-        data["episodes"] = media_info.episode
+        data["resz"] = "e%s" % media_info.episode.zfill(2)
 
-    if media_info.year:
-        data["year"] = media_info.year
-
-    return get_subs_for_part(data)
+    return get_subs_for_part(media_info, data)
 
 
 def handle_media_info(media_info, part):
-
     if not ignore_search(media_info.filename):
 
-        si_list = keyword_search(media_info.filename)
+        sub_info_list = media_info_search(media_info)
 
-        if not si_list:
-            Log("No results from keyword/filename search, try harder")
-            si_list = media_info_search(media_info)
-
-        for si in si_list:
+        for si in sub_info_list:
             Log(Locale.Language.Match(si.lang))
-            part.subtitles[Locale.Language.Match(si.lang)][si.url] = Proxy.Media(si.sub, ext=si.ext)
+            part.subtitles[Locale.Language.Match(si.lang)][si.url] = Proxy.Media(si.sub, ext=si.ext, format=si.ext)
+
     else:
         Log("Ignoring search for file %s" % media_info.filename)
         Log("Due to a %s file being present in the same directory" % IGNORE_FILE)
@@ -187,7 +193,7 @@ class MediaInfo:
         Log("IsMovie: %s" % self.isMovie)
         Log("Year: %s" % self.year)
         Log("Filename: %s" % self.filename)
-        # Log("ReleaseGroup: %s" % self.releaseGroup)
+        Log("ReleaseGroup: %s" % self.releaseGroup)
         Log("Season: %s " % self.season)
         Log("Episode: %s " % self.episode)
 
@@ -197,18 +203,6 @@ def get_metadata_xml(media_id):
     Log(url)
     elem = XML.ElementFromURL(url)
     return elem
-
-
-def get_movie_info(media):
-    mi = MediaInfo(media.title)
-
-    elem = get_metadata_xml(media.id)
-
-    year = elem.xpath("//Video/@year")
-    if len(year) > 0:
-        mi.year = year[0]
-
-    return mi
 
 
 def get_tv_show_info(media):
@@ -222,36 +216,17 @@ def get_tv_show_info(media):
     return i
 
 
-class PodnapisiSubtitlesAgentMovies(Agent.Movies):
-    name = 'HunSub Movie Subtitles'
-    languages = [Locale.Language.English]
-    primary_provider = False
-    contributes_to = ['com.plexapp.agents.imdb']
-
-    def search(self, results, media, lang):
-        Log("Movie search")
-        results.Append(MetadataSearchResult(id='null', score=100))
-
-    def update(self, metadata, media, lang):
-        Log("Movie update")
-        movie_info = get_movie_info(media)
-        Log("Title: %s" % media.title)
-        for item in media.items:
-            for part in item.parts:
-                movie_info.filename = os.path.basename(part.file)
-
-                handle_media_info(movie_info, part)
-
-
-class PodnapisiSubtitlesAgentTvShows(Agent.TV_Shows):
+class HunSubAgentTvShows(Agent.TV_Shows):
     name = 'HunSub TV Subtitles'
     languages = [Locale.Language.English]
     primary_provider = False
-    contributes_to = ['com.plexapp.agents.thetvdb']
+    contributes_to = ['com.plexapp.agents.thetvdb', 'com.plexapp.agents.themoviedb']
+
 
     def search(self, results, media, lang):
         Log("TV search")
         results.Append(MetadataSearchResult(id='null', score=100))
+
 
     def update(self, metadata, media, lang):
         Log("TV update")
