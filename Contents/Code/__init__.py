@@ -12,7 +12,7 @@ OS_PLEX_USERAGENT = 'plexapp.com v9.0'
 def Start():
     HTTP.CacheTime = 0
     HTTP.Headers['User-agent'] = OS_PLEX_USERAGENT
-    Log("Starting Podnapisi Plex Agent")
+    Log("Starting HunSub Plex Agent")
 
 def ValidatePrefs():
     return
@@ -22,10 +22,6 @@ def getLangList():
     langList = [Prefs["langPref1"]]
     if(Prefs["langPref2"] != "None"):
         langList.append(Prefs["langPref2"])
-    if(Prefs["langPref3"] != "None"):
-        langList.append(Prefs["langPref3"])
-    if(Prefs["langPref4"] != "None"):
-        langList.append(Prefs["langPref4"])
     return langList
 
 #Do a basic search for the filename and return all sub urls found
