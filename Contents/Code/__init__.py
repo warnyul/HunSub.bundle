@@ -146,14 +146,14 @@ def ignore_search(filename):
 
 
 # Fallback method if keyword search doesn't return anything
-def media_info_search(media_info):
+def media_info_search(media_info, escape):
     data = {}
 
     Log("Detailed search for:")
     media_info.print_me()
 
     if media_info.name:
-        data["cim"] = media_info.name
+        data["cim"] = media_info.name.replace("'", "") if escape else media_info.name
 
     if media_info.season:
         data["evad"] = "s%s" % media_info.season.zfill(2)
@@ -167,7 +167,10 @@ def media_info_search(media_info):
 def handle_media_info(media_info, part):
     if not ignore_search(media_info.filename):
 
-        sub_info_list = media_info_search(media_info)
+        sub_info_list = media_info_search(media_info, False)
+
+        if not sub_info_list:
+            sub_info_list = media_info_search(media_info, True)
 
         for si in sub_info_list:
             Log(Locale.Language.Match(si.lang))
