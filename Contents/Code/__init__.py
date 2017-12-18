@@ -104,9 +104,9 @@ def get_subs_for_part(media_info, data):
     for lang in get_language_list():
         subs = search_subs(data, lang)
         for sub in subs:
-            has_match = find_release_match(media_info, sub.releaseGroups)
+            has_match = find_release_match(media_info, sub.release_groups)
 
-            Log("find subtitle for this release %s %s %s" % (has_match, media_info.filename, sub.releaseGroups))
+            Log("find subtitle for this release %s %s %s" % (has_match, media_info.filename, sub.release_groups))
             if not has_match:
                 continue
 
@@ -122,9 +122,9 @@ def get_subs_for_part(media_info, data):
 
 def find_release_match(media_info, release_groups):
 
-    for releaseGroup in release_groups:
+    for release_group in release_groups:
         count = 0
-        release_group_items = releaseGroup.replace('-', ' ').split(' ')
+        release_group_items = release_group.replace('-', ' ').split(' ')
         for item in release_group_items:
             # Log("find %s release in %s" % (item, media_info.filename))
             if item.lower() in media_info.filename.lower():
@@ -184,7 +184,7 @@ class MediaInfo:
         self.isMovie = is_movie
         self.year = None
         self.filename = None
-        self.releaseGroup = None
+        self.release_group = None
         self.season = None
         self.episode = None
 
@@ -193,7 +193,7 @@ class MediaInfo:
         Log("IsMovie: %s" % self.isMovie)
         Log("Year: %s" % self.year)
         Log("Filename: %s" % self.filename)
-        Log("ReleaseGroup: %s" % self.releaseGroup)
+        Log("ReleaseGroup: %s" % self.release_group)
         Log("Season: %s " % self.season)
         Log("Episode: %s " % self.episode)
 
